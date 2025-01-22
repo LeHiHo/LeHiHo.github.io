@@ -2,97 +2,85 @@ import React, { useState, useEffect } from "react";
 
 function App() {
   const [dates, setDates] = useState([]);
+  const [counts, setCounts] = useState([]);
 
-  // JSON 파일 로드
   useEffect(() => {
     fetch("/testInfo.json")
       .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load JSON");
-        }
+        if (!response.ok) throw new Error("Failed to load JSON");
         return response.json();
       })
-      .then((data) => setDates(data.dates))
+      .then((data) => {
+        setDates(data.dates);
+        setCounts(Array(data.dates.length).fill(0)); // counts 초기화
+      })
       .catch((error) => console.error("Error loading JSON:", error));
   }, []);
 
-  const [counts, setCounts] = useState([]);
-
-  // 날짜가 로드되면 counts 초기화
-  useEffect(() => {
-    if (dates.length > 0) {
-      setCounts(Array(dates.length).fill(0));
-    }
-  }, [dates]);
-
-  const handleIncrement = (index) => {
-    const newCounts = [...counts];
-    newCounts[index] += 1;
-    setCounts(newCounts);
-  };
-
-  const handleDecrement = (index) => {
-    const newCounts = [...counts];
-    if (newCounts[index] > 0) {
-      newCounts[index] -= 1;
-    }
-    setCounts(newCounts);
+  const updateCount = (index, delta) => {
+    setCounts((prev) =>
+      prev.map((count, i) => (i === index ? Math.max(0, count + delta) : count))
+    );
   };
 
   const groupedDates = dates.reduce((acc, date, index) => {
-    const year = `${date.split("-")[0]}`;
-    if (!acc[year]) {
-      acc[year] = [];
-    }
+    const year = date.split("-")[0];
+    acc[year] = acc[year] || [];
     acc[year].push({ date, index });
     return acc;
   }, {});
 
-  // 년도를 내림차순으로 정렬
   const sortedYears = Object.keys(groupedDates).sort((a, b) => b - a);
 
-  // 각 년도의 날짜 배열을 빠른 월부터 정렬 (오름차순)
-  sortedYears.forEach((year) => {
+  sortedYears.forEach((year) =>
     groupedDates[year].sort(
-      (a, b) =>
-        new Date(`${a.date}`).getTime() - new Date(`${b.date}`).getTime()
-    );
-  });
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    )
+  );
 
   return (
-    <div className="p-4">
-      {sortedYears.map((year) => (
-        <div key={year} className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">{year}</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {groupedDates[year].map(({ date, index }) => (
-              <div
-                key={date}
-                className="bg-gray-200 p-4 text-center border border-gray-300 rounded font-mono flex justify-between items-center"
-              >
-                <div className="text-2xl font-bold">{date}</div>
-                <div className="flex items-center">
-                  <button
-                    className="bg-red-500 text-white px-2 py-1 rounded mr-2"
-                    onClick={() => handleDecrement(index)}
-                  >
-                    -
-                  </button>
-                  <span className="text-xl">{counts[index]}</span>
-                  <button
-                    className="bg-blue-500 text-white px-2 py-1 rounded ml-2"
-                    onClick={() => handleIncrement(index)}
-                  >
-                    +
-                  </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 p-6">
+      <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-lg p-8">
+        <h1 className="text-4xl font-extrabold text-center mb-8 text-gray-800">
+          Test Review Tracker
+        </h1>
+        {sortedYears.map((year) => (
+          <div key={year} className="mb-10">
+            <h2 className="text-3xl font-semibold text-gray-700 border-b-2 border-gray-300 pb-2 mb-4">
+              {year}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {groupedDates[year].map(({ date, index }) => (
+                <div
+                  key={date}
+                  className="bg-gradient-to-br from-blue-100 via-white to-blue-50 p-6 shadow-md rounded-lg transform hover:scale-105 transition-transform duration-300"
+                >
+                  <div className="text-xl font-bold text-gray-800 mb-4 text-center">
+                    {date}
+                  </div>
+                  <div className="flex items-center justify-center gap-4">
+                    <button
+                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow"
+                      onClick={() => updateCount(index, -1)}
+                    >
+                      -
+                    </button>
+                    <span className="text-2xl font-bold text-gray-800">
+                      {counts[index]}
+                    </span>
+                    <button
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow"
+                      onClick={() => updateCount(index, 1)}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
